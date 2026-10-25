@@ -1,0 +1,12 @@
+node_modules
+.next
+out
+.env
+.env.local
+.env.*.local
+storage
+.pglite
+screenshots
+*.log
+*.tsbuildinfo
+.DS_Store

@@ -1,0 +1,33 @@
+# /etc/systemd/system/galeria.service
+# User: galeria. App: /srv/galeria/current. Env: /srv/galeria/.env
+
+[Unit]
+Description=Galeria - Next.js photo store
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=galeria
+Group=galeria
+WorkingDirectory=/srv/galeria/current
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=HOSTNAME=127.0.0.1
+Environment=APP_ROOT=/srv/galeria/current
+EnvironmentFile=/srv/galeria/.env
+ExecStart=/usr/bin/node node_modules/next/dist/bin/next start -H 127.0.0.1 -p 3000
+Restart=always
+RestartSec=5
+TimeoutStopSec=20
+KillSignal=SIGTERM
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/galeria/current/storage
+ReadWritePaths=/srv/galeria/current/.next/cache
+
+[Install]
+WantedBy=multi-user.target
