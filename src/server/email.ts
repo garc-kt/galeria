@@ -32,7 +32,7 @@ export async function sendEmail(input: EmailInput): Promise<void> {
           Authorization: "Bearer " + apiKey,
           "Content-Type": "application/json",
         },
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(5000),
         body: JSON.stringify({
           from: emailFrom(),
           to: [input.to],

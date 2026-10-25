@@ -8,4 +8,5 @@ User=galeria
 Group=galeria
 WorkingDirectory=/srv/galeria/current
 EnvironmentFile=/srv/galeria/.env
-ExecStart=/usr/bin/pnpm payments:reconcile
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+ExecStart=/usr/bin/env pnpm payments:reconcile
