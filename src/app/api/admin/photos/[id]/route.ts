@@ -30,19 +30,21 @@ export async function PATCH(request: Request, context: Context) {
   const { collectionId, ...data } = parsed.data;
   const db = await getDb();
 
-  if (Object.keys(data).length > 0) {
-    await db
-      .update(photos)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(photos.id, id));
-  }
-
-  if (collectionId !== undefined) {
-    await db.delete(collectionPhotos).where(eq(collectionPhotos.photoId, id));
-    if (collectionId) {
-      await db.insert(collectionPhotos).values({ collectionId, photoId: id, position: 0 });
+  await db.transaction(async (tx) => {
+    if (Object.keys(data).length > 0) {
+      await tx
+        .update(photos)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(photos.id, id));
     }
-  }
+
+    if (collectionId !== undefined) {
+      await tx.delete(collectionPhotos).where(eq(collectionPhotos.photoId, id));
+      if (collectionId) {
+        await tx.insert(collectionPhotos).values({ collectionId, photoId: id, position: 0 });
+      }
+    }
+  });
 
   return jsonOk({ ok: true });
 }

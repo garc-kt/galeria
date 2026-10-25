@@ -30,16 +30,17 @@ export default async function AdminDashboardPage() {
         </div>
       </div>
 
-      <dl className="mt-8 grid grid-cols-2 gap-px border border-line bg-line lg:grid-cols-4">
+      <dl className="mt-8 grid grid-cols-2 gap-px border border-line bg-line lg:grid-cols-5">
         {[
           ["Fotos", String(stats.photos)],
           ["Publicadas", String(stats.published)],
           ["Pedidos pagos", String(stats.orders)],
           ["Receita", formatBRL(stats.revenue)],
+          ["Entregas falhas", String(stats.failedDeliveries)],
         ].map(([label, value]) => (
           <div key={label} className="bg-surface p-5">
             <dt className="text-[11px] uppercase tracking-[0.16em] text-muted">{label}</dt>
-            <dd className="mt-2 font-display text-3xl tracking-tight">{value}</dd>
+            <dd className={label === "Entregas falhas" && stats.failedDeliveries > 0 ? "mt-2 font-display text-3xl tracking-tight text-red-700" : "mt-2 font-display text-3xl tracking-tight"}>{value}</dd>
           </div>
         ))}
       </dl>

@@ -14,10 +14,10 @@ import type { ExifData } from "@/db/schema";
 import { maxUploadBytes, photographerName } from "@/server/env";
 import { extractPhotoData } from "@/features/photos/server/extract";
 import { jsonError, jsonOk } from "@/server/http";
-import { processImage } from "@/features/photos/server/images";
+import { processImage, removeDerived } from "@/features/photos/server/images";
 import { parsePriceToCents } from "@/lib/money";
 import { slugWithSuffix } from "@/lib/slug";
-import { putFile } from "@/server/storage";
+import { deleteFile, putFile } from "@/server/storage";
 import { validateUpload } from "@/features/photos/server/upload";
 import { uuidSchema } from "@/lib/validation";
 
@@ -55,6 +55,8 @@ export async function POST(request: Request) {
   const fields: Record<string, string> = {};
   const files: IncomingFile[] = [];
   const pending: Promise<void>[] = [];
+  const storedKeys: string[] = [];
+  let photoId: string | null = null;
 
   try {
     await new Promise<void>((resolve, reject) => {
@@ -145,6 +147,7 @@ export async function POST(request: Request) {
         : null;
 
     const id = randomUUID();
+    photoId = id;
     let exif: ExifData = {};
     let preview: Buffer | null = null;
 
@@ -177,6 +180,7 @@ export async function POST(request: Request) {
     if (rawEntry) {
       originalKey = "originals/" + id + "." + rawEntry.extension;
       await putFile(originalKey, rawEntry.file.path, "application/octet-stream");
+      storedKeys.push(originalKey);
     } else {
       originalKey = "masters/" + id + ".jpg";
     }
@@ -190,45 +194,56 @@ export async function POST(request: Request) {
         await sharp(masterEntry.file.path).rotate().jpeg({ quality: 95, mozjpeg: true }).toFile(normalized);
         await putFile(masterKey, normalized, "image/jpeg");
       }
+      storedKeys.push(masterKey);
     }
 
     const db = await getDb();
-    const [inserted] = await db
-      .insert(photos)
-      .values({
-        id,
-        slug: slugWithSuffix(title, id),
-        title,
-        description,
-        alt,
-        width: processed.sourceWidth,
-        height: processed.sourceHeight,
-        widths: processed.widths,
-        blurDataUrl: processed.blurDataUrl,
-        exif,
-        priceCents,
-        currency: "BRL",
-        license,
-        status: "draft",
-        originalKey,
-        originalName: rawEntry?.file.filename ?? masterEntry?.file.filename ?? null,
-        masterKey,
-        previewWidth: processed.previewWidth,
-      })
-      .returning({ id: photos.id, slug: photos.slug });
+    const inserted = await db.transaction(async (tx) => {
+      const [row] = await tx
+        .insert(photos)
+        .values({
+          id,
+          slug: slugWithSuffix(title, id),
+          title,
+          description,
+          alt,
+          width: processed.sourceWidth,
+          height: processed.sourceHeight,
+          widths: processed.widths,
+          blurDataUrl: processed.blurDataUrl,
+          exif,
+          priceCents,
+          currency: "BRL",
+          license,
+          status: "draft",
+          originalKey,
+          originalName: rawEntry?.file.filename ?? masterEntry?.file.filename ?? null,
+          masterKey,
+          previewWidth: processed.previewWidth,
+        })
+        .returning({ id: photos.id, slug: photos.slug });
 
-    if (!inserted) return jsonError("Não foi possível salvar a foto.", 500);
+      if (!row) throw new Error("photo insert returned no row");
 
-    if (collectionId) {
-      await db
-        .insert(collectionPhotos)
-        .values({ collectionId, photoId: inserted.id, position: 0 })
-        .onConflictDoNothing();
-    }
+      if (collectionId) {
+        await tx
+          .insert(collectionPhotos)
+          .values({ collectionId, photoId: row.id, position: 0 })
+          .onConflictDoNothing();
+      }
+
+      return row;
+    });
 
     return jsonOk({ ok: true, photo: inserted });
   } catch (error) {
     console.error("[upload]", error);
+    for (const key of storedKeys) {
+      await deleteFile(key).catch(() => undefined);
+    }
+    if (photoId) {
+      await removeDerived(photoId).catch(() => undefined);
+    }
     return jsonError("Falha ao processar o upload.", 500);
   } finally {
     await rm(tmpDir, { recursive: true, force: true });

@@ -20,26 +20,45 @@ export async function sendEmail(input: EmailInput): Promise<void> {
     return;
   }
 
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: "Bearer " + apiKey,
-      "Content-Type": "application/json",
-    },
-    signal: AbortSignal.timeout(15000),
-    body: JSON.stringify({
-      from: emailFrom(),
-      to: [input.to],
-      subject: input.subject,
-      html: input.html,
-      text: input.text,
-    }),
-  });
+  let lastError: unknown = new Error("Falha ao enviar e-mail.");
 
-  if (!response.ok) {
-    const detail = (await response.text()).slice(0, 300);
-    throw new Error("Falha ao enviar e-mail (" + response.status + "): " + detail);
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    let response: Response | null = null;
+
+    try {
+      response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + apiKey,
+          "Content-Type": "application/json",
+        },
+        signal: AbortSignal.timeout(15000),
+        body: JSON.stringify({
+          from: emailFrom(),
+          to: [input.to],
+          subject: input.subject,
+          html: input.html,
+          text: input.text,
+        }),
+      });
+    } catch (error) {
+      lastError = error;
+    }
+
+    if (response) {
+      if (response.ok) return;
+
+      const detail = (await response.text()).slice(0, 300);
+      lastError = new Error("Falha ao enviar e-mail (" + response.status + "): " + detail);
+      if (response.status < 500) throw lastError;
+    }
+
+    if (attempt < 2) {
+      await new Promise((resolve) => setTimeout(resolve, 600 * (attempt + 1)));
+    }
   }
+
+  throw lastError;
 }
 
 type DeliveryEmail = {

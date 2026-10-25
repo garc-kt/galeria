@@ -1,0 +1,11 @@
+[Unit]
+Description=Reconcile pending Mercado Pago orders
+After=network.target postgresql.service
+
+[Service]
+Type=oneshot
+User=galeria
+Group=galeria
+WorkingDirectory=/srv/galeria/current
+EnvironmentFile=/srv/galeria/.env
+ExecStart=/usr/bin/pnpm payments:reconcile

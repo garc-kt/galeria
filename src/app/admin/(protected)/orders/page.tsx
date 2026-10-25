@@ -13,6 +13,12 @@ function statusLabel(status: string): string {
   return "Pendente";
 }
 
+function deliveryLabel(status: string): string {
+  if (status === "sent") return "Entregue";
+  if (status === "failed") return "Falhou";
+  return "Pendente";
+}
+
 export default async function AdminOrdersPage() {
   const rows = await listOrders(100);
 
@@ -30,7 +36,7 @@ export default async function AdminOrdersPage() {
         <p className="mt-10 text-sm text-muted">Nenhum pedido ainda.</p>
       ) : (
         <div className="mt-6 overflow-x-auto">
-          <table className="w-full min-w-[860px] text-left text-sm">
+          <table className="w-full min-w-[980px] text-left text-sm">
             <thead className="border-b border-line text-[11px] uppercase tracking-[0.14em] text-muted">
               <tr>
                 <th className="py-3 pr-4 font-normal">Data</th>
@@ -39,6 +45,7 @@ export default async function AdminOrdersPage() {
                 <th className="py-3 pr-4 font-normal">Licença</th>
                 <th className="py-3 pr-4 font-normal">Valor</th>
                 <th className="py-3 pr-4 font-normal">Status</th>
+                <th className="py-3 pr-4 font-normal">Entrega</th>
                 <th className="py-3 font-normal">Ação</th>
               </tr>
             </thead>
@@ -63,6 +70,28 @@ export default async function AdminOrdersPage() {
                     {order.providerPaymentId ? (
                       <p className="mt-1 font-mono text-[10px] text-muted">MP {order.providerPaymentId}</p>
                     ) : null}
+                  </td>
+                  <td className="py-3 pr-4">
+                    {order.status === "paid" ? (
+                      <div>
+                        <span
+                          className={
+                            order.deliveryStatus === "failed"
+                              ? "text-xs text-red-700"
+                              : "text-xs text-muted"
+                          }
+                        >
+                          {deliveryLabel(order.deliveryStatus)}
+                        </span>
+                        {order.deliveryError ? (
+                          <p className="mt-1 max-w-[180px] truncate text-[10px] text-red-700" title={order.deliveryError}>
+                            {order.deliveryError}
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted">—</span>
+                    )}
                   </td>
                   <td className="py-3">
                     {order.status === "paid" ? (

@@ -68,6 +68,7 @@ Pare o <code>pnpm dev</code> antes de rodar scripts de banco. PGlite é single-p
 | <code>pnpm db:clear-orders</code> | Apaga pedidos, pagamentos e downloads (dev) |
 | <code>pnpm db:reset</code> | Apaga fotos, coleções, pedidos e arquivos (dev) |
 | <code>pnpm db:status</code> | Conta fotos, coleções, pedidos e downloads |
+| <code>pnpm payments:reconcile</code> | Reconcilia pedidos pendentes com o Mercado Pago |
 
 ## Variáveis de ambiente
 
@@ -197,8 +198,11 @@ O build precisa de <code>NEXT_PUBLIC_SITE_URL</code> correto. O Next embute vari
 
 ~~~bash
 cp deploy/galeria.service /etc/systemd/system/galeria.service
+cp deploy/galeria-reconcile.service /etc/systemd/system/galeria-reconcile.service
+cp deploy/galeria-reconcile.timer /etc/systemd/system/galeria-reconcile.timer
 systemctl daemon-reload
 systemctl enable --now galeria
+systemctl enable --now galeria-reconcile.timer
 cp deploy/nginx.conf /etc/nginx/sites-available/galeria
 ln -s /etc/nginx/sites-available/galeria /etc/nginx/sites-enabled/galeria
 nginx -t && systemctl reload nginx
@@ -251,7 +255,7 @@ Originais de fotos são insubstituíveis. Tenha pelo menos uma cópia fora da VP
 
 ## Segurança
 
-- Troque a senha do seed e ative 2FA em <code>/admin/security</code>. A troca de senha fica no mesmo painel; sessões já abertas seguem até expirar.
+- Troque a senha do seed e ative 2FA em <code>/admin/security</code>. A troca de senha invalida sessões já abertas.
 - Se o e-mail de entrega falhar, use <b>Reenviar e-mail</b> em Pedidos. O reenvio emite um link novo e invalida os antigos depois do envio.
 - Headers de segurança são enviados pelo Next e pelo Nginx (nosniff, frame-options, referrer-policy, permissions-policy).
 - A página de pagamento usa token HMAC de 2h; não aceita UUID solto. O valor vem do banco, o cartão é tokenizado no Brick e o servidor só vê o token.
@@ -322,8 +326,8 @@ src/
   server/              env, email, storage, http, rate-limit
 docs/                  ARCHITECTURE.md
 drizzle/               migration SQL
-scripts/               init, migrate, seed, admin, reset, status, deploy, backup
-deploy/                nginx.conf, galeria.service
+scripts/               init, migrate, seed, admin, reset, status, deploy, backup, reconcile
+deploy/                nginx.conf, galeria.service, reconcile timer
 tests/                 Vitest
 ~~~
 

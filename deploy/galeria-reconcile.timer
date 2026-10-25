@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Mercado Pago reconciliation every 10 minutes
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=10min
+Unit=galeria-reconcile.service
+
+[Install]
+WantedBy=timers.target

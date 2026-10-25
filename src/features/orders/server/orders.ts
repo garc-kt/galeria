@@ -72,8 +72,18 @@ export async function fulfillOrder(orderId: string): Promise<FulfillResult> {
 
   try {
     await sendDeliveryEmail(order, photo, token, expiresAt);
+    await db
+      .update(orders)
+      .set({ deliveryStatus: "sent", deliveredAt: new Date(), deliveryError: null })
+      .where(eq(orders.id, orderId));
   } catch (error) {
+    const message = error instanceof Error ? error.message.slice(0, 500) : "Falha no envio.";
     console.error("[email] delivery failed for order " + orderId, error);
+    await db
+      .update(orders)
+      .set({ deliveryStatus: "failed", deliveryError: message })
+      .where(eq(orders.id, orderId))
+      .catch(() => undefined);
   }
 
   return { token, expiresAt };
@@ -107,8 +117,18 @@ export async function resendOrderDelivery(orderId: string): Promise<{ ok: boolea
 
   try {
     await sendDeliveryEmail(order, photo, token, expiresAt);
+    await db
+      .update(orders)
+      .set({ deliveryStatus: "sent", deliveredAt: new Date(), deliveryError: null })
+      .where(eq(orders.id, orderId));
   } catch (error) {
+    const message = error instanceof Error ? error.message.slice(0, 500) : "Falha no envio.";
     console.error("[email] resend failed for order " + orderId, error);
+    await db
+      .update(orders)
+      .set({ deliveryStatus: "failed", deliveryError: message })
+      .where(eq(orders.id, orderId))
+      .catch(() => undefined);
     return { ok: false, error: "Falha ao enviar o e-mail. Verifique o Resend." };
   }
 

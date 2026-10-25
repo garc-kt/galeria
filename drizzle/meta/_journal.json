@@ -15,6 +15,13 @@
       "when": 1792881216424,
       "tag": "0001_abnormal_archangel",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792947484042,
+      "tag": "0002_free_scourge",
+      "breakpoints": true
     }
   ]
 }
